@@ -1,0 +1,43 @@
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.19;
+
+contract SecureStorage {
+    address public owner;
+
+    struct EncryptedData {
+        bytes32 keyHash;
+        string cipherText;
+        uint256 timestamp;
+    }
+    
+
+    mapping(address => EncryptedData) private storedData;
+
+    event DataStored(address indexed user, uint256 timestamp);
+    event DataRetrieved(address indexed user, string cipherText);
+
+    modifier onlyOwner() {
+        require(msg.sender == owner, "Not authorized");
+        _;
+    }
+
+    constructor() {
+        owner = msg.sender;
+    }
+
+    function storeEncryptedData(string memory _cipherText, string memory _privateKey) public {
+        bytes32 keyHash = keccak256(abi.encodePacked(_privateKey));
+        storedData[msg.sender] = EncryptedData(keyHash, _cipherText, block.timestamp);
+        emit DataStored(msg.sender, block.timestamp);
+    }
+
+    function retrieveEncryptedData(string memory _privateKey) public view returns (string memory) {
+        EncryptedData memory data = storedData[msg.sender];
+        require(data.timestamp != 0, "No data found for this user");
+
+        bytes32 providedKeyHash = keccak256(abi.encodePacked(_privateKey));
+        require(providedKeyHash == data.keyHash, "Incorrect private key");
+
+        return data.cipherText;
+    }
+}
